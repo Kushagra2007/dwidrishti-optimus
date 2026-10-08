@@ -1,0 +1,34 @@
+{
+  "common": {
+    "appName": "Dwi Drishti News",
+    "tagline": "Same news. Two views.",
+    "evidenceNotVerdicts": "Evidence, not verdicts",
+    "changeLanguage": "Change language",
+    "searchPlaceholder": "Search stories across outlets…",
+    "learn": "Learn",
+    "biasGoggles": "Bias goggles",
+    "pressGShortcut": "(press G)",
+    "toggleTheme": "Toggle theme",
+    "readingDiet": "Your reading diet",
+    "topStories": "Top stories",
+    "blindspots": "Blindspots",
+    "all": "All",
+    "perspectivePrep": "Perspective Prep brief",
+    "coveredBy": "Covered by",
+    "of": "of",
+    "critical": "critical",
+    "neutral": "neutral",
+    "supportive": "supportive",
+    "readAtSource": "Read at source",
+    "addedToDiet": "Added to your reading diet ✓",
+    "tryTheEngine": "Try the engine",
+    "analyze": "Analyze",
+    "emptyFeed": "No stories match. Clear the search or pick another topic."
+  },
+  "languageGate": {
+    "title": "Choose your reading language",
+    "subtitle": "Stories will be translated and framed in your preferred language while preserving original source links.",
+    "moreLanguages": "More Indian languages",
+    "confirm": "Continue to Dwi Drishti"
+  }
+}

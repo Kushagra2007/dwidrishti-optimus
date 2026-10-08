@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dwi Drishti News: same news, two views</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&family=Hanken+Grotesk:wght@400;500;700&family=Noto+Sans+Devanagari:wght@500;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="intro" id="intro" aria-hidden="true"><span>द्वि दृष्टि</span><div class="by">by Optimus</div></div>
+<header>
+  <a class="d logo" href="#top">Dwi Drishti<b>News</b></a><div class="sp"></div>
+  <input id="q" type="search" placeholder="Search stories" aria-label="Search stories">
+  <a class="pill gt" href="#learn">Learn</a>
+  <button class="pill" id="gg" aria-pressed="false" title="Highlight loaded wording (press G)">👓<span class="gt"> Bias goggles</span></button>
+  <button class="pill" id="lang" aria-pressed="false" aria-label="Switch language">हिं</button>
+  <button class="pill" id="th" aria-label="Toggle light or dark theme">◐</button>
+</header>
+
+<section class="hero" id="top">
+  <div class="dateline"><span id="dt"></span><span>Prototype edition</span><span>Evidence, not verdicts</span></div>
+  <h1 class="d stage" id="stage" aria-label="Same news. Two views.">
+    <span class="ly a" aria-hidden="true"><span data-t="h1a"></span><span data-t="h1b"></span></span>
+    <span class="ly b" aria-hidden="true"><span data-t="h1a"></span><span data-t="h1b"></span></span>
+  </h1>
+  <div class="herofoot">
+    <p data-t="sub"></p>
+    <div class="cue">Scroll to compare ↓</div>
+  </div>
+</section>
+
+<section class="scrolly" id="scrolly" aria-label="Scroll to compare two headlines">
+  <div class="stick">
+    <div class="scap"><small class="kick" id="sk">Step 1 of 4 · The event</small><p id="st">A Budget announcement changes the income-tax slabs. One event, two headlines.</p></div>
+    <div class="split" id="split">
+      <div class="lay la"><span>Outlet A frames it as</span><h2 class="d">Budget hands the middle class a tax break</h2></div>
+      <div class="lay lb"><span>Outlet B frames it as</span><h2 class="d">The fine print: who still pays more</h2></div>
+      <div class="knob"><i>↔</i></div>
+    </div>
+    <div class="prog"><i id="sp"></i></div>
+  </div>
+</section>
+<div class="tick" aria-hidden="true"><div id="tk"></div></div>
+
+<section class="imp" id="imp">
+  <div><b class="d" data-n="58" data-s="%">58%</b><p>of Indians get news from YouTube</p></div>
+  <div><b class="d" data-n="56" data-s="%">56%</b><p>get news from WhatsApp</p></div>
+  <div><b class="d" data-n="38" data-s="–39%">38–39%</b><p>trust Indian news</p></div>
+  <small>Figures from our team's research. Trust is low, so we show the evidence.</small>
+</section>
+
+<section class="eng">
+  <div>
+    <h2 class="d" data-t="eh"></h2>
+    <p data-t="ep"></p>
+    <div class="ir"><input id="topic" value="air quality" aria-label="Topic to analyze"><button class="go" id="go" data-t="go"></button></div>
+    <div class="chips" id="sug"></div>
+  </div>
+  <div class="term" aria-live="polite"><pre id="log">$ waiting for a topic…</pre><div class="pb"><i id="pb"></i></div></div>
+</section>
+
+<main class="feed">
+  <h2 class="d" data-t="fh"></h2>
+  <div class="chips" id="chips" role="group" aria-label="Filter stories"></div>
+  <div class="diet" id="diet"></div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<section class="learn" id="learn">
+  <h2 class="d">Media literacy lab</h2>
+  <p class="lp">Four short lessons, then a quiz. Made for exam aspirants and anyone who wants to read the news with open eyes.</p>
+  <div class="lgrid">
+    <div class="paper"><div id="lt" role="group" aria-label="Lessons"></div><div id="lpn"></div></div>
+    <div class="paper"><h3 class="d">Spot the bias</h3><div id="quiz"></div><small>Sample data: lean scores are illustrative.</small></div>
+  </div>
+</section>
+<footer>Prototype for hackathon demo. Stories, headlines and scores are illustrative sample data. Built by Team Optimus. Press G for bias goggles.</footer>
+<dialog id="dlg" aria-label="Story comparison"></dialog>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "common": {
+    "appName": "द्वि दृष्टि न्यूज़",
+    "tagline": "एक ख़बर. दो नज़र.",
+    "evidenceNotVerdicts": "सबूत, फैसले नहीं",
+    "changeLanguage": "भाषा बदलें",
+    "searchPlaceholder": "सभी अखबारों में ख़बरें खोजें…",
+    "learn": "सीखें",
+    "biasGoggles": "बायस गॉगल्स",
+    "pressGShortcut": "(दबाएँ G)",
+    "toggleTheme": "थीम बदलें",
+    "readingDiet": "आपकी पढ़ने की आदत (डाइट)",
+    "topStories": "मुख्य ख़बरें",
+    "blindspots": "ब्लाइंडस्पॉट",
+    "all": "सभी",
+    "perspectivePrep": "पर्सपेक्टिव प्रेप ब्रीफ़",
+    "coveredBy": "कवर किया गया",
+    "of": "में से",
+    "critical": "आलोचनात्मक",
+    "neutral": "तटस्थ",
+    "supportive": "सकारात्मक",
+    "readAtSource": "स्रोत पर पढ़ें",
+    "addedToDiet": "आपकी डाइट में जोड़ा गया ✓",
+    "tryTheEngine": "इंजन आज़माएँ",
+    "analyze": "विश्लेषण करें",
+    "emptyFeed": "कोई ख़बर नहीं मिली। खोज बदलें या दूसरा विषय चुनें।"
+  },
+  "languageGate": {
+    "title": "अपनी भाषा चुनें",
+    "subtitle": "ख़बरें और उनका विश्लेषण आपकी भाषा में अनुवादित होगा, जबकि मूल स्रोत लिंक सुरक्षित रहेंगे।",
+    "moreLanguages": "अन्य भारतीय भाषाएँ",
+    "confirm": "द्वि दृष्टि में आगे बढ़ें"
+  }
+}
