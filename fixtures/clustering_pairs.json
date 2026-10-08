@@ -1,0 +1,50 @@
+[
+  {
+    "id": "pair-1",
+    "headlineA": "Supreme Court strikes down electoral bonds scheme as unconstitutional",
+    "headlineB": "SC declares electoral bonds invalid, orders SBI to submit donor details",
+    "langA": "en",
+    "langB": "en",
+    "sameEvent": true
+  },
+  {
+    "id": "pair-2",
+    "headlineA": "सुप्रीम कोर्ट ने चुनावी बॉन्ड योजना को असंवैधानिक करार दिया",
+    "headlineB": "Supreme Court holds electoral bonds violate right to information",
+    "langA": "hi",
+    "langB": "en",
+    "sameEvent": true
+  },
+  {
+    "id": "pair-3",
+    "headlineA": "Union Budget introduces revised income tax slabs for individual earners",
+    "headlineB": "Farmers hold nationwide march demanding legal guarantee for MSP",
+    "langA": "en",
+    "langB": "en",
+    "sameEvent": false
+  },
+  {
+    "id": "pair-4",
+    "headlineA": "तमिलनाडु में एनईईटी परीक्षा को लेकर विधानसभा में नया प्रस्ताव पारित",
+    "headlineB": "Tamil Nadu Assembly passes resolution against NEET entrance examination",
+    "langA": "hi",
+    "langB": "en",
+    "sameEvent": true
+  },
+  {
+    "id": "pair-5",
+    "headlineA": "Reserve Bank maintains repo rate unchanged at 6.5 percent",
+    "headlineB": "RBI MPC keeps key policy repo rate steady at 6.5%",
+    "langA": "en",
+    "langB": "en",
+    "sameEvent": true
+  },
+  {
+    "id": "pair-6",
+    "headlineA": "Air Quality Index in Delhi breaches 450 into severe category",
+    "headlineB": "BCCI reveals annual player retainership contracts for senior team",
+    "langA": "en",
+    "langB": "en",
+    "sameEvent": false
+  }
+]
