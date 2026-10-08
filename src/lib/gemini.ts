@@ -13,6 +13,6 @@ export function getGenAIClient(): GoogleGenAI {
   return genaiClient;
 }
 
-export const FAST_MODEL = process.env.GEMINI_MODEL_FAST || "gemini-2.5-flash";
-export const REASONING_MODEL = process.env.GEMINI_MODEL_REASONING || "gemini-2.5-pro";
-export const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || "text-embedding-004";
+export const FAST_MODEL = process.env.GEMINI_MODEL_FAST || "gemini-3.5-flash";
+export const REASONING_MODEL = process.env.GEMINI_MODEL_REASONING || "gemini-3.5-flash";
+export const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";

@@ -52,7 +52,7 @@ export class ContextDevFetcher implements ContentFetcher {
         },
         body: JSON.stringify({
           url,
-          format: "markdown",
+          formats: { markdown: true },
         }),
       });
 
@@ -66,7 +66,7 @@ export class ContextDevFetcher implements ContentFetcher {
       }
 
       const data = await response.json();
-      const content = data.content || data.markdown || data.text || feedSnippet || "";
+      const content = data.markdown?.data || data.text || feedSnippet || "";
       
       return {
         title: data.title,
