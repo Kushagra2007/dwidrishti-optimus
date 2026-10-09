@@ -7,10 +7,8 @@ const ai = new GoogleGenAI({ apiKey });
 
 async function check() {
   const models = [
-    "gemini-3.8-flash",
-    "gemini-3.5-flash",
     "gemini-3.1-pro-preview",
-    "gemini-2.0-flash",
+    "gemini-3.5-pro",
   ];
 
   for (const m of models) {
@@ -21,7 +19,7 @@ async function check() {
       });
       console.log(`Model [${m}]: SUCCESS ->`, res.text?.trim());
     } catch (err: any) {
-      console.log(`Model [${m}]: ERROR ->`, err.message);
+      console.log(`Model [${m}]: ERROR ->`, err.message?.slice(0, 80));
     }
   }
 }

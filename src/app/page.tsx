@@ -398,10 +398,13 @@ export default function HomePage() {
       setEngineProgress(100);
 
       if (data.analysis) {
+        const modelNote = data.fallbackOccurred
+          ? ` (failover activated to ${data.modelUsed})`
+          : ` (${data.modelUsed})`;
         setEngineStatus(
           (prev) =>
             prev +
-            `\n✓ Gemini 3.5 Flash pipeline complete: "${data.analysis.canonicalTitle}"\n✓ Cached in database. Opening Left-Centre-Right perspective brief…`
+            `\n✓ Pipeline complete${modelNote}: "${data.analysis.canonicalTitle}"\n✓ Opening Left-Centre-Right perspective brief…`
         );
 
         const newOutletMap: Record<string, OutletCoverage> = {};

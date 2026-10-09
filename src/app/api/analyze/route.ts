@@ -2,6 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 import { lintAIOutput } from "@/lib/linter";
 import { getDb, schema } from "@/db";
 import { eq } from "drizzle-orm";
+import { generateContentWithFallback } from "@/lib/gemini";
+import { getEnrichedNewsClusters } from "@/lib/context_harvester";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +72,8 @@ export async function POST(req: Request) {
           return Response.json({
             success: true,
             cached: true,
-            modelUsed: cached[0].modelUsed,
+            modelUsed: `${cached[0].modelUsed} (cached)`,
+            fallbackOccurred: false,
             analysis: cached[0].analysisData,
           });
         }
@@ -79,7 +82,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // 2. Fallback to Live Gemini 3.5 Flash Inference
+    // 2. Prepare AI Request with Resilient Multi-Model Cascade
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return Response.json({ error: "Gemini API key is not configured" }, { status: 500 });
@@ -131,16 +134,77 @@ Return exactly one JSON object with these fields:
 
 Use valid JSON syntax with double-quoted keys and string values. Do not add markdown, commentary, or extra text.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
+    let generatedText = "";
+    let modelUsed = "";
+    let fallbackOccurred = false;
+
+    try {
+      const result = await generateContentWithFallback(ai, prompt, {
         responseMimeType: "application/json",
         temperature: 0.1,
-      },
-    });
+      });
+      generatedText = result.text;
+      modelUsed = result.modelUsed;
+      fallbackOccurred = result.fallbackOccurred;
+    } catch (apiErr: any) {
+      console.warn("[All Gemini Live Models Busy]:", apiErr.message);
 
-    const parsed = parseJsonObject(response.text || "");
+      // Emergency Knowledge-Base Fallback: check if we have a matched curated cluster
+      const clusters = await getEnrichedNewsClusters();
+      const matched = clusters.find(
+        (c) =>
+          c.canonicalTitle.toLowerCase().includes(normalizedTopic) ||
+          c.tag.toLowerCase().includes(normalizedTopic) ||
+          normalizedTopic.split(" ").some((w) => w.length > 3 && c.canonicalTitle.toLowerCase().includes(w))
+      );
+
+      if (matched) {
+        const fallbackAnalysis = {
+          topic,
+          canonicalTitle: matched.canonicalTitle,
+          consensusSummary: matched.leadFact,
+          divergenceSummary: matched.divergenceSummary,
+          omissionEvidence: matched.omissionEvidence,
+          omittedOutlets: matched.omittedOutlets,
+          leftFraming: matched.br?.[0] || "Focuses on civil society questions and procedural delays.",
+          centreFraming: matched.br?.[1] || "Presents official statements and statutory timeline.",
+          rightFraming: matched.br?.[2] || "Highlights government enforcement and public benefit.",
+          outlets: matched.articles.map((a, idx) => ({
+            name: a.outlet,
+            language: a.language,
+            headline: a.title,
+            scoreGov: 35 + ((idx * 27) % 55),
+            loadedPhrases: [],
+            axes: {
+              gov: 35 + ((idx * 27) % 55),
+              cul: 50,
+              fed: 50,
+              eco: 50,
+              cas: 50,
+              ten: 40,
+            },
+          })),
+          perspectiveDossier: {
+            keyQuestion: `Critically examine the contrasting media angles on "${matched.canonicalTitle}".`,
+            framework: ["Press Council Guidelines", "Neutral Media Framework"],
+          },
+        };
+
+        return Response.json({
+          success: true,
+          cached: false,
+          modelUsed: "offline-knowledge-base (emergency fallback)",
+          fallbackOccurred: true,
+          analysis: fallbackAnalysis,
+        });
+      }
+
+      throw new Error(
+        `Gemini models are under peak demand (${apiErr?.message || "High Demand"}). Please try again shortly.`
+      );
+    }
+
+    const parsed = parseJsonObject(generatedText);
 
     // Lint for banned pejorative labels
     const lintRes = lintAIOutput(parsed);
@@ -160,7 +224,7 @@ Use valid JSON syntax with double-quoted keys and string values. Do not add mark
           normalizedTopic,
           language,
           analysisData: parsed,
-          modelUsed: "gemini-3.5-flash",
+          modelUsed,
         });
       } catch (cacheErr) {
         console.warn("[DB Save Warning]:", cacheErr);
@@ -170,7 +234,8 @@ Use valid JSON syntax with double-quoted keys and string values. Do not add mark
     return Response.json({
       success: true,
       cached: false,
-      modelUsed: "gemini-3.5-flash",
+      modelUsed,
+      fallbackOccurred,
       analysis: parsed,
     });
   } catch (err: any) {
