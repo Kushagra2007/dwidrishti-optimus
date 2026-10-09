@@ -1,4 +1,4 @@
-import { fetchLiveIndianNews } from "@/lib/live_news_harvester";
+import { getEnrichedNewsClusters } from "@/lib/context_harvester";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +7,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get("q") || "";
 
-    const clusters = await fetchLiveIndianNews();
+    const clusters = await getEnrichedNewsClusters();
 
     if (!query) {
       return Response.json({ clusters, total: clusters.length });
