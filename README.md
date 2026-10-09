@@ -105,8 +105,13 @@ For production hosting on **Vercel**, the optimal database is **Neon Serverless 
    SELECT * FROM topic_analyses_cache WHERE normalized_topic = 'air quality' LIMIT 1;
    ```
    If cached, the complete 3-perspective breakdown and 6-axis scores return in **< 50ms** without touching the AI API!
-2. **On-Demand Gemini 3.5 Flash Fallback**:
-   If a topic is novel, `gemini-3.5-flash` executes via `@google/genai` with streaming progress updates, and the result is immediately cached in Postgres for all future readers.
+2. **Resilient Multi-Model Fallback Cascade**:
+   When Google Gemini encounters peak traffic demand (HTTP 503) or rate limits (HTTP 429), the engine automatically executes an in-flight failover cascade:
+   * **Primary Tier**: `gemini-3.5-flash`
+   * **Secondary Failover**: `gemini-3.8-flash` (triggered automatically with a 600ms backoff)
+   * **Tertiary Failover**: `gemini-3-flash-preview`
+   * **Emergency Tier**: Semantic matching against the offline 20+ current reports knowledge base.
+   This guarantees that the user never encounters a blank crash or unhandled model error during peak usage hours.
 3. **Pre-computation Worker**:
    Scheduled cron runs (`/api/ingest`) cluster fresh articles and precompute Left-Centre-Right ratings ahead of user visits.
 
