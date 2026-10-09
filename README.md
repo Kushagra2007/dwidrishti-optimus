@@ -10,6 +10,29 @@
 
 ---
 
+## Latest Update: API Resilience, Hindi Branding, and Environment Safety
+
+This update improves the live analysis path and the Hindi experience, and makes local configuration safer to handle.
+
+### Gemini response parsing
+
+`POST /api/analyze` now extracts the first complete top-level JSON object from the model response instead of passing the entire response directly to `JSON.parse`. The extractor tracks nested objects, quoted strings, and escaped characters, so braces inside string values do not end parsing early. It rejects responses with no object, malformed JSON, or an incomplete object with a specific error; successful output continues through the existing banned-term linter before it is returned. The API response shape and its `gemini-3.5-flash` model selection are unchanged.
+
+### Hindi interface details
+
+When Hindi is selected, the masthead now uses Hindi lettering and the lead headline reads "एक ख़बर। दो नज़रिए।" The animated wordmark also switches to the Hindi name. Its animation iterates Unicode grapheme clusters with `Intl.Segmenter`, preserving composed Hindi characters instead of splitting them into separate code points. English retains its existing name and headline.
+
+### Local environment protection
+
+The root `.env` file is now ignored by Git, alongside the existing local environment files. `.env.example` uses clear placeholders for the Gemini key and cron secret. Copy the example to `.env.local` and replace placeholders locally; never commit real credentials.
+
+### Files covered by this update
+
+- `src/app/api/analyze/route.ts`: robust top-level JSON extraction and clearer invalid-response errors.
+- `src/app/page.tsx`: Hindi masthead, localized lead headline, and grapheme-aware animated wordmark.
+- `.gitignore`: ignore root `.env` files.
+- `.env.example`: provide safer, explicit credential placeholders.
+
 ## 1. Project Overview & Philosophy
 
 Modern democratic discourse in India is fractured across linguistic silos, ideological divides, and algorithmic echo chambers:
@@ -118,8 +141,8 @@ Operating under **Section 52(1)(a) of the Indian Copyright Act, 1957**:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-org/dwi-drishti.git
-   cd dwi-drishti
+   git clone https://github.com/ayush00028/dwidrishti-optimus.git
+   cd dwidrishti-optimus
    ```
 
 2. **Install dependencies:**

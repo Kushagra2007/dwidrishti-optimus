@@ -3,6 +3,47 @@ import { lintAIOutput } from "@/lib/linter";
 
 export const dynamic = "force-dynamic";
 
+function parseJsonObject(text: string): Record<string, any> {
+  const start = text.indexOf("{");
+  if (start === -1) {
+    throw new Error("Gemini returned no JSON object. Try the analysis again.");
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i += 1) {
+    const char = text[i];
+
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+
+    if (char === '"') inString = true;
+    else if (char === "{") depth += 1;
+    else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          const parsed: unknown = JSON.parse(text.slice(start, i + 1));
+          if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+            throw new Error("Expected a JSON object");
+          }
+          return parsed as Record<string, any>;
+        } catch {
+          throw new Error("Gemini returned malformed JSON. Try the analysis again.");
+        }
+      }
+    }
+  }
+
+  throw new Error("Gemini returned incomplete JSON. Try the analysis again.");
+}
+
 export async function POST(req: Request) {
   try {
     const { topic, language = "en" } = await req.json();
@@ -37,36 +78,13 @@ STRICT NON-NEGOTIABLE RULES:
 5. Provide a 150-word balanced Perspective Prep practice question for civil service aspirants.
 6. Target language for output: ${language}.
 
-Respond strictly with valid JSON conforming to this schema:
-{
-  "topic": "${topic}",
-  "canonicalTitle": string,
-  "consensusSummary": string,
-  "divergenceSummary": string,
-  "omissionEvidence": string,
-  "omittedOutlets": string[],
-  "outlets": [
-    {
-      "name": string,
-      "language": string,
-      "headline": string,
-      "scoreGov": number (0 to 100),
-      "loadedPhrases": [{ "text": string, "polarity": "favourable" | "critical" }],
-      "axes": {
-        "gov": number (0 to 100),
-        "cul": number (0 to 100),
-        "fed": number (0 to 100),
-        "eco": number (0 to 100),
-        "cas": number (0 to 100),
-        "ten": number (0 to 100)
-      }
-    }
-  ],
-  "examBrief": {
-    "question": string,
-    "framework": string[]
-  }
-}`;
+Return exactly one JSON object with these fields: topic, canonicalTitle, consensusSummary,
+divergenceSummary, omissionEvidence (strings), omittedOutlets (array of strings), outlets
+(array of objects with name, language, headline, scoreGov from 0 to 100, loadedPhrases as
+objects with text and polarity [favourable or critical], and axes with gov, cul, fed, eco, cas,
+and ten numeric scores from 0 to 100), and examBrief (object with question as a string and
+framework as an array of strings). Use valid JSON syntax with double-quoted keys and string
+values. Do not add markdown, commentary, or a second JSON object after the result.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
@@ -77,7 +95,7 @@ Respond strictly with valid JSON conforming to this schema:
       },
     });
 
-    const parsed = JSON.parse(response.text || "{}");
+    const parsed = parseJsonObject(response.text || "");
 
     // Lint for banned pejorative labels
     const lintRes = lintAIOutput(parsed);

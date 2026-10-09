@@ -615,7 +615,7 @@ export default function HomePage() {
       {/* Broadside Header */}
       <header>
         <div className="d logo">
-          Dwi Drishti<b>News</b>
+          {lang === "hi" ? <>द्वि दृष्टि<b> न्यूज़</b></> : <>Dwi Drishti<b>News</b></>}
         </div>
         <div className="sp"></div>
 
@@ -676,7 +676,12 @@ export default function HomePage() {
             <span>Evidence, Not Verdicts</span>
           </div>
           <div className="plate" aria-label="Dwi Drishti News">
-            {Array.from("Dwi Drishti News").map((c, i) => (
+            {Array.from(
+              new Intl.Segmenter(lang, { granularity: "grapheme" }).segment(
+                lang === "hi" ? "द्वि दृष्टि न्यूज़" : "Dwi Drishti News"
+              ),
+              ({ segment }) => segment
+            ).map((c, i) => (
               <span key={i} style={{ animationDelay: `calc(var(--io) + ${(0.25 + i * 0.045).toFixed(3)}s)` }}>
                 {c === " " ? "\u00A0" : c}
               </span>
@@ -689,9 +694,9 @@ export default function HomePage() {
           <div>
             <small className="kick">Lead editorial</small>
             <h1 className="d">
-              <span>Same news.</span>
+              <span>{lang === "hi" ? "एक ख़बर।" : "Same news."}</span>
               <br />
-              <span className="ol">Two views.</span>
+              <span className="ol">{lang === "hi" ? "दो नज़रिए।" : "Two views."}</span>
             </h1>
             <p>
               {lang === "hi"
