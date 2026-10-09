@@ -20,7 +20,7 @@ This update improves the live analysis path and the Hindi experience, and makes 
 
 ### Hindi interface details
 
-When Hindi is selected, the masthead now uses Hindi lettering and the lead headline reads "एक ख़बर। दो नज़रिए।? The animated wordmark also switches to the Hindi name. Its animation iterates Unicode grapheme clusters with `Intl.Segmenter`, preserving composed Hindi characters instead of splitting them into separate code points. English retains its existing name and headline.
+When Hindi is selected, the masthead now uses Hindi lettering and the lead headline reads "एक ख़बर। दो नज़रिए।" The animated wordmark also switches to the Hindi name. Its animation iterates Unicode grapheme clusters with `Intl.Segmenter`, preserving composed Hindi characters instead of splitting them into separate code points. English retains its existing name and headline.
 
 ### Local environment protection
 
