@@ -22,6 +22,7 @@ export interface NewsCluster {
   isBlindspot?: boolean;
   omissionEvidence: string;
   omittedOutlets: string[];
+  br?: [string, string, string];
   articles: ContextArticle[];
 }
 

@@ -144,3 +144,14 @@ export const aiUsage = pgTable("ai_usage", {
   clusterCount: integer("cluster_count").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const topicAnalysesCache = pgTable("topic_analyses_cache", {
+  id: text("id").primaryKey(),
+  topic: text("topic").notNull(),
+  normalizedTopic: text("normalized_topic").notNull(),
+  language: text("language").default("en").notNull(),
+  analysisData: jsonb("analysis_data").notNull(),
+  modelUsed: text("model_used").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

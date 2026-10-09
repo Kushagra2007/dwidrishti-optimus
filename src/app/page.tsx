@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 
-// India-specific 6 framing axes
+// 6 India-specific framing axes
 const AXES = [
   { name: "Government", low: "Questions govt", high: "Backs govt", desc: "How far the wording leans toward or against the government." },
   { name: "Culture", low: "Cosmopolitan", high: "Traditionalist", desc: "Whether the story uses cosmopolitan or traditionalist cultural cues." },
@@ -67,7 +67,6 @@ function highlightLoadedText(text: string) {
   return <>{result}</>;
 }
 
-// Pseudo-random hash for deterministic axis scoring when not from API
 function hashStr(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -90,8 +89,9 @@ export interface StoryItem {
   t: string;
   th: string;
   ab: [string, string[]]; // [omissionText, omittedOutlets]
-  f: string; // consensus fact
-  d: string; // divergence summary
+  f: string; // consensus fact (What happened)
+  d: string; // divergence summary (Where framing splits)
+  br: [string, string, string]; // [Left summary, Centre summary, Right summary]
   isBlindspot?: boolean;
   o: Record<string, OutletCoverage>;
 }
@@ -103,12 +103,13 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedTag, setSelectedTag] = useState<string>("All");
 
-  // Stories state (20+ loaded from API + curated)
+  // Stories
   const [stories, setStories] = useState<StoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Active Story Dialog
-  const [activeStory, setActiveStory] = useState<StoryItem | null>(null);
+  // Active Story & Route
+  const [activeStoryId, setActiveStoryId] = useState<string | null>(null);
+  const [radarStory, setRadarStory] = useState<StoryItem | null>(null);
   const [activeAxis, setActiveAxis] = useState<number>(0);
   const [visibleOutlets, setVisibleOutlets] = useState<Record<string, boolean>>({});
   const [showBrief, setShowBrief] = useState<boolean>(false);
@@ -117,13 +118,13 @@ export default function HomePage() {
   const [diet, setDiet] = useState<{ k: number; n: number; s: number }>({ k: 0, n: 0, s: 0 });
   const [readStoryIds, setReadStoryIds] = useState<Set<string>>(new Set());
 
-  // Real-time Engine States (Gemini 3.5 Flash)
+  // Real-time Engine States
   const [engineTopic, setEngineTopic] = useState<string>("air quality");
   const [engineStatus, setEngineStatus] = useState<string>("$ waiting for a topic…");
   const [engineProgress, setEngineProgress] = useState<number>(0);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
 
-  // Scrollytelling Knob and Step
+  // Scrollytelling
   const [scrollyStep, setScrollyStep] = useState<number>(0);
   const [sliderPos, setSliderPos] = useState<number>(50);
 
@@ -168,9 +169,8 @@ export default function HomePage() {
         if (json.clusters && Array.isArray(json.clusters)) {
           const formatted: StoryItem[] = json.clusters.map((c: any) => {
             const outletMap: Record<string, OutletCoverage> = {};
-            c.articles?.forEach((art: any, i: number) => {
+            c.articles?.forEach((art: any) => {
               const h = hashStr(c.id + art.outlet);
-              // Calculate naturalistic lean score
               let baseScore = 50;
               if (art.outlet.includes("Wire") || art.outlet.includes("Scroll")) baseScore = 20 + (h % 22);
               else if (art.outlet.includes("Jagran") || art.outlet.includes("Amar Ujala")) baseScore = 75 + (h % 20);
@@ -186,6 +186,11 @@ export default function HomePage() {
               };
             });
 
+            // Derive 3-perspective framing summaries
+            const leftSum = c.br?.[0] || `Focuses on accountability, institutional gaps, and grassroots concerns regarding ${c.canonicalTitle.toLowerCase()}.`;
+            const centreSum = c.br?.[1] || `Lays out the official proceedings, data benchmarks, and timeline without a loaded verdict.`;
+            const rightSum = c.br?.[2] || `Highlights administrative decisive action, governance delivery, and national developmental impact.`;
+
             return {
               id: c.id,
               tag: c.tag || "National",
@@ -194,6 +199,7 @@ export default function HomePage() {
               ab: [c.omissionEvidence || "Specific background data", c.omittedOutlets || []],
               f: c.leadFact || "Key institutional developments were officially reported.",
               d: c.divergenceSummary || "Outlets diverge on policy emphasis and accountability.",
+              br: [leftSum, centreSum, rightSum],
               isBlindspot: c.isBlindspot || Object.keys(outletMap).length <= 2,
               o: outletMap,
             };
@@ -201,7 +207,7 @@ export default function HomePage() {
 
           setStories(formatted);
 
-          // Setup initial quiz pool from loaded stories
+          // Setup initial quiz pool
           const pool: Array<{ headline: string; lean: "k" | "n" | "s"; storyTitle: string; outlet: string }> = [];
           formatted.forEach((st) => {
             Object.entries(st.o).forEach(([outlet, cov]) => {
@@ -224,6 +230,25 @@ export default function HomePage() {
     loadData();
   }, []);
 
+  // Hash-based URL routing for story view
+  useEffect(() => {
+    const handleHashChange = () => {
+      const match = window.location.hash.match(/^#\/story\/([a-zA-Z0-9_-]+)/);
+      if (match) {
+        setActiveStoryId(match[1]);
+        document.body.classList.add("story-open");
+        window.scrollTo(0, 0);
+      } else {
+        setActiveStoryId(null);
+        document.body.classList.remove("story-open");
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
   // Keyboard shortcut: Press 'G' for Bias Goggles
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -235,7 +260,6 @@ export default function HomePage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Update body classes for goggles and theme
   useEffect(() => {
     if (biasGoggles) document.body.classList.add("gg");
     else document.body.classList.remove("gg");
@@ -245,7 +269,7 @@ export default function HomePage() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  // 2. Interactive Halftone Canvas Effect
+  // Halftone Canvas Effect
   useEffect(() => {
     const cv = canvasRef.current;
     if (!cv) return;
@@ -288,7 +312,6 @@ export default function HomePage() {
     hero?.addEventListener("pointermove", onMove);
     hero?.addEventListener("pointerleave", onLeave);
 
-    let t0 = 0;
     function render(time: number) {
       if (!ctx) return;
       ctx.clearRect(0, 0, W, H);
@@ -323,7 +346,7 @@ export default function HomePage() {
     };
   }, [theme]);
 
-  // 3. Scrollytelling Scroll Observer
+  // Scrollytelling Observer
   useEffect(() => {
     const handleScroll = () => {
       const sec = scrollyRef.current;
@@ -331,11 +354,9 @@ export default function HomePage() {
       const r = sec.getBoundingClientRect();
       const progress = Math.min(1, Math.max(0, -r.top / (r.height - window.innerHeight)));
 
-      // Step calculation
       const step = progress < 0.2 ? 0 : progress < 0.5 ? 1 : progress < 0.8 ? 2 : 3;
       setScrollyStep(step);
 
-      // Auto update slider when scrolling
       const calculatedX = Math.round((1 - Math.min(1, Math.max(0, (progress - 0.2) / 0.6))) * 100);
       setSliderPos(calculatedX);
     };
@@ -344,24 +365,24 @@ export default function HomePage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 4. Real-time Gemini 3.5 Flash Analysis Engine
+  // Real-time Gemini 3.5 Flash Analysis Engine
   const handleAnalyze = async (overrideTopic?: string) => {
     const topicToRun = (overrideTopic || engineTopic).trim();
     if (!topicToRun || isAnalyzing) return;
 
     setIsAnalyzing(true);
     setEngineProgress(15);
-    setEngineStatus(`$ initialize Gemini 3.5 Flash pipeline for "${topicToRun}"\n▸ Fetching live media feeds via Context.dev API...`);
+    setEngineStatus(`$ initialize Gemini 3.5 Flash pipeline for "${topicToRun}"\n▸ Checking cloud semantic database cache & Context.dev scraper...`);
 
     const timer1 = setTimeout(() => {
       setEngineProgress(45);
-      setEngineStatus((prev) => prev + `\n▸ Ingesting articles: parsing syntax & legal statutory frames...`);
-    }, 700);
+      setEngineStatus((prev) => prev + `\n▸ Parsing Left / Centre / Right framing & statutory context...`);
+    }, 600);
 
     const timer2 = setTimeout(() => {
       setEngineProgress(75);
-      setEngineStatus((prev) => prev + `\n▸ Evaluating 6 Indian axes & verifying verbatim quotes...`);
-    }, 1400);
+      setEngineStatus((prev) => prev + `\n▸ Computing 6 Indian axes & extracting selective omission proof...`);
+    }, 1200);
 
     try {
       const res = await fetch("/api/analyze", {
@@ -380,10 +401,9 @@ export default function HomePage() {
         setEngineStatus(
           (prev) =>
             prev +
-            `\n✓ Gemini 3.5 Flash pipeline completed: "${data.analysis.canonicalTitle}"\n✓ Verbatim evidence attached. Opening perspective brief…`
+            `\n✓ Gemini 3.5 Flash pipeline complete: "${data.analysis.canonicalTitle}"\n✓ Cached in database. Opening Left-Centre-Right perspective brief…`
         );
 
-        // Convert Gemini analysis to a StoryItem
         const newOutletMap: Record<string, OutletCoverage> = {};
         data.analysis.outlets?.forEach((o: any) => {
           newOutletMap[o.name] = {
@@ -406,17 +426,21 @@ export default function HomePage() {
           tag: "Real-Time Analysis",
           t: data.analysis.canonicalTitle || topicToRun,
           th: data.analysis.canonicalTitle || topicToRun,
-          ab: [data.analysis.omissionEvidence || "Key context", data.analysis.omittedOutlets || []],
+          ab: [data.analysis.omissionEvidence || "Key contextual metrics", data.analysis.omittedOutlets || []],
           f: data.analysis.consensusSummary || "Official record confirmed across outlets.",
           d: data.analysis.divergenceSummary || "Framing diverges on administrative vs subaltern priorities.",
+          br: [
+            data.analysis.leftFraming || "Scrutinizes policy gaps, oversight deficits, and community impact.",
+            data.analysis.centreFraming || "Presents the statistical data and official filings objectively.",
+            data.analysis.rightFraming || "Foregrounds administrative compliance, development, and national stability.",
+          ],
           isBlindspot: false,
           o: newOutletMap,
         };
 
-        // Add to story list and immediately open dialog
         setStories((prev) => [newStory, ...prev]);
         setTimeout(() => {
-          openStory(newStory);
+          window.location.hash = `#/story/${newStory.id}`;
         }, 500);
       } else {
         setEngineStatus((prev) => prev + `\n⚠ Error: ${data.error || "Analysis failed"}`);
@@ -428,9 +452,9 @@ export default function HomePage() {
     }
   };
 
-  // Open Story modal
-  const openStory = (story: StoryItem) => {
-    setActiveStory(story);
+  // Open Radar Modal
+  const openRadar = (story: StoryItem) => {
+    setRadarStory(story);
     setActiveAxis(0);
     setShowBrief(false);
     const vis: Record<string, boolean> = {};
@@ -441,11 +465,11 @@ export default function HomePage() {
     }
   };
 
-  const closeStory = () => {
+  const closeRadar = () => {
     if (dialogRef.current) {
       dialogRef.current.close();
     }
-    setActiveStory(null);
+    setRadarStory(null);
   };
 
   // Axis score calculator
@@ -453,7 +477,6 @@ export default function HomePage() {
     const cov = story.o[outlet];
     if (!cov) return 50;
     if (cov.axes && cov.axes[axisIdx] !== undefined) return cov.axes[axisIdx];
-    // Deterministic pseudo-metric
     const g = cov.score;
     const h = hashStr(story.id + outlet + axisIdx);
     return Math.round(0.35 * g + 0.65 * (15 + (h % 70)));
@@ -491,12 +514,17 @@ export default function HomePage() {
     });
   }, [stories, selectedTag, searchQuery]);
 
-  // Unique tags for chips
   const tagsList = useMemo(() => {
     const set = new Set<string>();
     stories.forEach((s) => set.add(s.tag));
     return ["All", ...Array.from(set), "Blindspots"];
   }, [stories]);
+
+  // Current active story for the Left-Centre-Right story view
+  const currentStory = useMemo(() => {
+    if (!activeStoryId) return null;
+    return stories.find((s) => s.id === activeStoryId) || null;
+  }, [stories, activeStoryId]);
 
   // Reading Persona
   const personaInfo = useMemo(() => {
@@ -538,7 +566,6 @@ export default function HomePage() {
     };
   }, [diet]);
 
-  // Radar points calculator
   const getRadarPoint = (axisIdx: number, val: number): [string, string] => {
     const angle = (-90 + 60 * axisIdx) * (Math.PI / 180);
     const x = (150 + Math.cos(angle) * val).toFixed(1);
@@ -546,7 +573,6 @@ export default function HomePage() {
     return [x, y];
   };
 
-  // Scrolly text definitions
   const SCROLLY_STEPS = [
     {
       label: "Step 1 of 4 · The event",
@@ -574,7 +600,6 @@ export default function HomePage() {
     },
   ];
 
-  // Media literacy lessons
   const LESSONS = [
     {
       name: "Framing",
@@ -606,16 +631,21 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Intro splash */}
+      {/* Intro Splash */}
       <div className="intro" id="intro" aria-hidden="true">
         <span>द्वि दृष्टि</span>
         <div className="by">by Optimus · Cross-Lingual Media Framing Platform</div>
       </div>
 
-      {/* Broadside Header */}
+      {/* Header */}
       <header>
-        <div className="d logo">
-          {lang === "hi" ? <>द्वि दृष्टि<b> न्यूज़</b></> : <>Dwi Drishti<b>News</b></>}
+        <div
+          className="d logo"
+          onClick={() => {
+            window.location.hash = "#/";
+          }}
+        >
+          Dwi Drishti<b>News</b>
         </div>
         <div className="sp"></div>
 
@@ -666,6 +696,233 @@ export default function HomePage() {
         </button>
       </header>
 
+      {/* PROTOTYPE 5: DEDICATED LEFT - CENTRE - RIGHT STORY VIEW */}
+      {currentStory && (
+        <main className="story" id="story">
+          <a
+            className="back"
+            href="#/"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.hash = "#/";
+            }}
+          >
+            ← {lang === "hi" ? "सभी ख़बरें (All stories)" : "All stories"}
+          </a>
+
+          <small className="kick">
+            {currentStory.tag}
+            {currentStory.isBlindspot ? " · BLINDSPOT" : ""}
+          </small>
+          <h1 className="d sh">{lang === "hi" ? currentStory.th : currentStory.t}</h1>
+
+          {/* Meter Bar: Left, Centre, Right Percentages */}
+          {(() => {
+            const arr = Object.values(currentStory.o);
+            const n = arr.length || 1;
+            const kCount = arr.filter((x) => x.score < 45).length;
+            const nCount = arr.filter((x) => x.score >= 45 && x.score <= 65).length;
+            const sCount = arr.filter((x) => x.score > 65).length;
+            const pc = (v: number) => Math.round((v / n) * 100);
+
+            return (
+              <div className="meter">
+                <div className="bar" role="img" aria-label={`Left ${kCount}, Centre ${nCount}, Right ${sCount}`}>
+                  <i className="k" style={{ flex: kCount || 0.01 }}></i>
+                  <i className="n" style={{ flex: nCount || 0.01 }}></i>
+                  <i className="s" style={{ flex: sCount || 0.01 }}></i>
+                </div>
+                <div className="ml">
+                  <span>
+                    <i className="dt k"></i>Left (Critical) {pc(kCount)}% · {kCount}
+                  </span>
+                  <span>
+                    <i className="dt n"></i>Centre (Neutral) {pc(nCount)}% · {nCount}
+                  </span>
+                  <span>
+                    <i className="dt s"></i>Right (Supportive) {pc(sCount)}% · {sCount}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Event Summary Box: What happened, Where framing splits, What is missing */}
+          <div className="bk">
+            <div>
+              <b>What happened</b>
+              <p>{currentStory.f}</p>
+            </div>
+            <div>
+              <b>Where the framing splits</b>
+              <p>{currentStory.d}</p>
+            </div>
+            <div>
+              <b>What is missing</b>
+              <p>
+                &ldquo;{currentStory.ab[0]}&rdquo; is documented in covering reports, but omitted from:{" "}
+                {currentStory.ab[1]?.length ? currentStory.ab[1].join(", ") : "None"}.
+              </p>
+            </div>
+          </div>
+
+          {/* 3-Column Differentiation Grid: Left, Centre, Right */}
+          <div className="cols">
+            {/* Column 1: Left (Critical of Govt) */}
+            {(() => {
+              const leftOutlets = Object.entries(currentStory.o).filter(([_, cov]) => cov.score < 45);
+              return (
+                <section className="col cl-k">
+                  <h3>Left</h3>
+                  <small>Critical of govt · {leftOutlets.length} of {Object.keys(currentStory.o).length} outlets</small>
+                  {leftOutlets.length ? (
+                    <>
+                      <p className="fr">{currentStory.br[0]}</p>
+                      {leftOutlets.map(([outlet, cov]) => (
+                        <div key={outlet} className="oc">
+                          <div className="on">
+                            <span>
+                              {outlet}
+                              <span className="lg">{cov.language || "EN"}</span>
+                            </span>
+                            <span className="font-mono">{cov.score}/100</span>
+                          </div>
+                          <p className={cov.language === "HI" ? "hi" : ""}>
+                            {highlightLoadedText(cov.headline)}
+                          </p>
+                          {currentStory.ab[1]?.includes(outlet) && (
+                            <span className="flag">Absent here: &ldquo;{currentStory.ab[0]}&rdquo;</span>
+                          )}
+                          <button
+                            className="pill rd"
+                            disabled={readStoryIds.has(currentStory.id)}
+                            onClick={() => handleReadAtSource(currentStory, outlet)}
+                          >
+                            {readStoryIds.has(currentStory.id) ? "Added to reading diet ✓" : "Read at source"}
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <div className="empty2">
+                      No outlet in our sample covered this from the critical/left perspective. That is a media blindspot.
+                    </div>
+                  )}
+                </section>
+              );
+            })()}
+
+            {/* Column 2: Centre (Neutral) */}
+            {(() => {
+              const centreOutlets = Object.entries(currentStory.o).filter(([_, cov]) => cov.score >= 45 && cov.score <= 65);
+              return (
+                <section className="col cl-n">
+                  <h3>Centre</h3>
+                  <small>Neutral · {centreOutlets.length} of {Object.keys(currentStory.o).length} outlets</small>
+                  {centreOutlets.length ? (
+                    <>
+                      <p className="fr">{currentStory.br[1]}</p>
+                      {centreOutlets.map(([outlet, cov]) => (
+                        <div key={outlet} className="oc">
+                          <div className="on">
+                            <span>
+                              {outlet}
+                              <span className="lg">{cov.language || "EN"}</span>
+                            </span>
+                            <span className="font-mono">{cov.score}/100</span>
+                          </div>
+                          <p className={cov.language === "HI" ? "hi" : ""}>
+                            {highlightLoadedText(cov.headline)}
+                          </p>
+                          {currentStory.ab[1]?.includes(outlet) && (
+                            <span className="flag">Absent here: &ldquo;{currentStory.ab[0]}&rdquo;</span>
+                          )}
+                          <button
+                            className="pill rd"
+                            disabled={readStoryIds.has(currentStory.id)}
+                            onClick={() => handleReadAtSource(currentStory, outlet)}
+                          >
+                            {readStoryIds.has(currentStory.id) ? "Added to reading diet ✓" : "Read at source"}
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <div className="empty2">
+                      No outlet in our sample covered this with neutral/descriptive reporting. That is a media blindspot.
+                    </div>
+                  )}
+                </section>
+              );
+            })()}
+
+            {/* Column 3: Right (Supportive of Govt) */}
+            {(() => {
+              const rightOutlets = Object.entries(currentStory.o).filter(([_, cov]) => cov.score > 65);
+              return (
+                <section className="col cl-s">
+                  <h3>Right</h3>
+                  <small>Supportive of govt · {rightOutlets.length} of {Object.keys(currentStory.o).length} outlets</small>
+                  {rightOutlets.length ? (
+                    <>
+                      <p className="fr">{currentStory.br[2]}</p>
+                      {rightOutlets.map(([outlet, cov]) => (
+                        <div key={outlet} className="oc">
+                          <div className="on">
+                            <span>
+                              {outlet}
+                              <span className="lg">{cov.language || "EN"}</span>
+                            </span>
+                            <span className="font-mono">{cov.score}/100</span>
+                          </div>
+                          <p className={cov.language === "HI" ? "hi" : ""}>
+                            {highlightLoadedText(cov.headline)}
+                          </p>
+                          {currentStory.ab[1]?.includes(outlet) && (
+                            <span className="flag">Absent here: &ldquo;{currentStory.ab[0]}&rdquo;</span>
+                          )}
+                          <button
+                            className="pill rd"
+                            disabled={readStoryIds.has(currentStory.id)}
+                            onClick={() => handleReadAtSource(currentStory, outlet)}
+                          >
+                            {readStoryIds.has(currentStory.id) ? "Added to reading diet ✓" : "Read at source"}
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <div className="empty2">
+                      No outlet in our sample covered this from the supportive/establishment angle. That is a media blindspot.
+                    </div>
+                  )}
+                </section>
+              );
+            })()}
+          </div>
+
+          <p className="note2">
+            Left, Centre and Right are mapped from how each headline frames the government in our analytical scoring rubric. They represent editorial framing angles on this specific event, not a blanket partisan label on any outlet.
+          </p>
+
+          <div className="acts">
+            <button className="pill" onClick={() => openRadar(currentStory)}>
+              Compare on 6-Axis Radar
+            </button>
+            <a
+              className="pill"
+              href="#/"
+              onClick={(e) => {
+                e.preventDefault();
+                window.location.hash = "#/";
+              }}
+            >
+              ← {lang === "hi" ? "सभी ख़बरें" : "All stories"}
+            </a>
+          </div>
+        </main>
+      )}
+
       {/* Hero Section */}
       <section className="hero">
         <canvas id="ht" ref={canvasRef} aria-hidden="true"></canvas>
@@ -676,12 +933,7 @@ export default function HomePage() {
             <span>Evidence, Not Verdicts</span>
           </div>
           <div className="plate" aria-label="Dwi Drishti News">
-            {Array.from(
-              new Intl.Segmenter(lang, { granularity: "grapheme" }).segment(
-                lang === "hi" ? "द्वि दृष्टि न्यूज़" : "Dwi Drishti News"
-              ),
-              ({ segment }) => segment
-            ).map((c, i) => (
+            {Array.from("Dwi Drishti News").map((c, i) => (
               <span key={i} style={{ animationDelay: `calc(var(--io) + ${(0.25 + i * 0.045).toFixed(3)}s)` }}>
                 {c === " " ? "\u00A0" : c}
               </span>
@@ -694,9 +946,9 @@ export default function HomePage() {
           <div>
             <small className="kick">Lead editorial</small>
             <h1 className="d">
-              <span>{lang === "hi" ? "एक ख़बर।" : "Same news."}</span>
+              <span>Same news.</span>
               <br />
-              <span className="ol">{lang === "hi" ? "दो नज़रिए।" : "Two views."}</span>
+              <span className="ol">Two views.</span>
             </h1>
             <p>
               {lang === "hi"
@@ -746,7 +998,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Marquee Ticker */}
+      {/* News Ticker */}
       <div className="tick" aria-hidden="true">
         <div>
           <span>The Hindu</span>
@@ -787,18 +1039,18 @@ export default function HomePage() {
           <p>trust Indian news</p>
         </div>
         <small>
-          Figures from contemporary media audits and Lokniti-CSDS surveys. Trust is fragile; therefore we present
-          verbatim evidence rather than verdicts.
+          Figures from contemporary media audits and Lokniti-CSDS surveys. Trust is fragile; therefore we differentiate
+          Left, Centre, and Right framing with verbatim evidence rather than moral verdicts.
         </small>
       </section>
 
-      {/* Live Real-Time Analysis Engine */}
+      {/* Real-time Analysis Engine */}
       <section className="eng">
         <div>
           <h2 className="d">Live Analysis Engine</h2>
           <p>
-            Powered live by <strong>Gemini 3.5 Flash</strong>. Enter any topic or pick a prompt below to run a 6-step
-            cross-lingual framing pipeline with verbatim omission extraction.
+            Powered live by <strong>Gemini 3.5 Flash</strong> with cloud database caching. Enter any topic to
+            extract Left / Centre / Right framing splits and omission proof in real time.
           </p>
 
           <div className="ir">
@@ -848,7 +1100,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Top Stories Feed */}
+      {/* Top Stories Feed Grid */}
       <main className="feed">
         <h2 className="d">{lang === "hi" ? "मुख्य ख़बरें (20+ रिपोर्ट्स)" : "Top Stories (20+ Reports)"}</h2>
 
@@ -871,22 +1123,23 @@ export default function HomePage() {
           <h3 className="d">Your Reading Diet</h3>
           {diet.k + diet.n + diet.s === 0 ? (
             <p>
-              Open any story card below and click <strong>&ldquo;Read at source&rdquo;</strong>. We will visualize your
-              perspective consumption balance in real time.
+              Open any story and click <strong>&ldquo;Read at source&rdquo;</strong>. We will visualize your
+              perspective consumption balance across Left, Centre, and Right in real time.
             </p>
           ) : (
             <>
               <div
                 className="bar"
                 role="img"
-                aria-label={`Reading diet: ${diet.k} critical, ${diet.n} neutral, ${diet.s} supportive`}
+                aria-label={`Reading diet: ${diet.k} Left (Critical), ${diet.n} Centre (Neutral), ${diet.s} Right (Supportive)`}
               >
                 <i className="k" style={{ flex: diet.k || 0.01 }}></i>
                 <i className="n" style={{ flex: diet.n || 0.01 }}></i>
                 <i className="s" style={{ flex: diet.s || 0.01 }}></i>
               </div>
               <p>
-                {personaInfo?.pct}% of what you have inspected leans {personaInfo?.dom === "k" ? "critical" : personaInfo?.dom === "s" ? "supportive" : "neutral"}.
+                {personaInfo?.pct}% of what you have inspected leans{" "}
+                {personaInfo?.dom === "k" ? "Left (Critical)" : personaInfo?.dom === "s" ? "Right (Supportive)" : "Centre (Neutral)"}.
               </p>
               {personaInfo && (
                 <div className="persona">
@@ -914,20 +1167,17 @@ export default function HomePage() {
               const totalCount = outletsArr.length;
 
               return (
-                <button
-                  key={story.id}
-                  className="card in"
-                  data-id={story.id}
-                  onClick={() => openStory(story)}
-                >
+                <article key={story.id} className="card in" data-id={story.id}>
                   {story.isBlindspot && <span className="stk">BLINDSPOT</span>}
                   <small>{story.tag}</small>
-                  <h3 className="d">{lang === "hi" ? story.th : story.t}</h3>
+                  <h3 className="d">
+                    <a href={`#/story/${story.id}`}>{lang === "hi" ? story.th : story.t}</a>
+                  </h3>
 
                   <div
                     className="bar"
                     role="img"
-                    aria-label={`${kCount} critical, ${nCount} neutral, ${sCount} supportive`}
+                    aria-label={`${kCount} Left, ${nCount} Centre, ${sCount} Right`}
                   >
                     <i className="k" style={{ flex: kCount || 0.1 }}></i>
                     <i className="n" style={{ flex: nCount || 0.1 }}></i>
@@ -935,25 +1185,35 @@ export default function HomePage() {
                   </div>
 
                   <small>
-                    Covered by {totalCount} outlets · {kCount} critical · {nCount} neutral · {sCount} supportive
+                    Covered by {totalCount} outlets · {kCount} Left · {nCount} Centre · {sCount} Right
                   </small>
-                </button>
+
+                  {/* PROTOTYPE 5: Actions: Read Brief and Compare */}
+                  <div className="acts">
+                    <a className="pill rb" href={`#/story/${story.id}`}>
+                      {lang === "hi" ? "ब्रीफ़ पढ़ें →" : "Read brief →"}
+                    </a>
+                    <button className="pill" onClick={() => openRadar(story)}>
+                      {lang === "hi" ? "तुलना" : "Compare"}
+                    </button>
+                  </div>
+                </article>
               );
             })}
           </div>
         )}
       </main>
 
-      {/* Story Comparison Modal (<dialog>) */}
+      {/* 6-Axis Radar Modal (<dialog>) */}
       <dialog id="dlg" ref={dialogRef} aria-label="Story comparison modal">
-        {activeStory && (
+        {radarStory && (
           <div>
-            <button className="x" aria-label="Close dialog" onClick={closeStory}>
+            <button className="x" aria-label="Close dialog" onClick={closeRadar}>
               ✕
             </button>
 
-            <small>{activeStory.tag}</small>
-            <h2 className="d">{lang === "hi" ? activeStory.th : activeStory.t}</h2>
+            <small>{radarStory.tag}</small>
+            <h2 className="d">{lang === "hi" ? radarStory.th : radarStory.t}</h2>
 
             {/* 6-Axis Radar Visualizer */}
             <div className="viz">
@@ -977,11 +1237,11 @@ export default function HomePage() {
                     </React.Fragment>
                   );
                 })}
-                {Object.entries(activeStory.o).map(([outlet, cov]) => {
+                {Object.entries(radarStory.o).map(([outlet]) => {
                   if (!visibleOutlets[outlet]) return null;
                   const clr = OUTLET_COLORS[outlet] || "#79bdb3";
                   const pts = AXES.map((_, i) => {
-                    const score = getAxisScore(activeStory, outlet, i);
+                    const score = getAxisScore(radarStory, outlet, i);
                     return getRadarPoint(i, score).join(",");
                   }).join(" ");
 
@@ -1001,7 +1261,7 @@ export default function HomePage() {
               </svg>
 
               <div className="leg" role="group" aria-label="Toggle Outlets">
-                {Object.keys(activeStory.o).map((outlet) => (
+                {Object.keys(radarStory.o).map((outlet) => (
                   <button
                     key={outlet}
                     className="pill lgb"
@@ -1045,10 +1305,10 @@ export default function HomePage() {
             </p>
 
             {/* Outlets List */}
-            {Object.entries(activeStory.o).map(([outlet, cov]) => {
-              const score = getAxisScore(activeStory, outlet, activeAxis);
-              const isOmitted = activeStory.ab[1]?.includes(outlet);
-              const alreadyRead = readStoryIds.has(activeStory.id);
+            {Object.entries(radarStory.o).map(([outlet, cov]) => {
+              const score = getAxisScore(radarStory, outlet, activeAxis);
+              const isOmitted = radarStory.ab[1]?.includes(outlet);
+              const alreadyRead = readStoryIds.has(radarStory.id);
 
               return (
                 <div key={outlet} className="row" data-o={outlet}>
@@ -1070,7 +1330,7 @@ export default function HomePage() {
 
                   {isOmitted && (
                     <span className="flag">
-                      Absent here: &ldquo;{activeStory.ab[0]}&rdquo;
+                      Absent here: &ldquo;{radarStory.ab[0]}&rdquo;
                     </span>
                   )}
 
@@ -1078,7 +1338,7 @@ export default function HomePage() {
                     <button
                       className="pill rd"
                       disabled={alreadyRead}
-                      onClick={() => handleReadAtSource(activeStory, outlet)}
+                      onClick={() => handleReadAtSource(radarStory, outlet)}
                     >
                       {alreadyRead ? "Added to reading diet ✓" : "Read at source"}
                     </button>
@@ -1089,30 +1349,39 @@ export default function HomePage() {
 
             {/* Omission Summary */}
             <p style={{ color: "var(--mut)", marginTop: "14px" }}>
-              <strong>Empirical omission proof:</strong> &ldquo;{activeStory.ab[0]}&rdquo; was documented by covering outlets, but was omitted by:{" "}
-              {activeStory.ab[1]?.length ? activeStory.ab[1].join(", ") : "None (Consensus coverage)"}.
+              <strong>Empirical omission proof:</strong> &ldquo;{radarStory.ab[0]}&rdquo; was documented by covering outlets, but was omitted by:{" "}
+              {radarStory.ab[1]?.length ? radarStory.ab[1].join(", ") : "None (Consensus coverage)"}.
             </p>
 
-            {/* Perspective Prep Brief */}
-            <button
-              className="pill"
-              style={{ marginTop: "12px" }}
-              aria-pressed={showBrief}
-              onClick={() => setShowBrief((prev) => !prev)}
-            >
-              Perspective Prep Brief
-            </button>
+            {/* GENERAL EVENT SUMMARY & PERSPECTIVE DOSSIER (Replaced UPSC-specific label) */}
+            <div style={{ marginTop: "14px" }}>
+              <a
+                className="pill rb"
+                href={`#/story/${radarStory.id}`}
+                onClick={() => closeRadar()}
+                style={{ marginRight: "8px" }}
+              >
+                View 3-Column Brief →
+              </a>
+              <button
+                className="pill"
+                aria-pressed={showBrief}
+                onClick={() => setShowBrief((prev) => !prev)}
+              >
+                {showBrief ? "Hide Event Summary" : "Perspective Dossier / Event Summary"}
+              </button>
+            </div>
 
             {showBrief && (
               <div className="brief">
                 <p>
-                  <strong>All outlets agree:</strong> {activeStory.f}
+                  <strong>What happened (Consensus):</strong> {radarStory.f}
                 </p>
                 <p>
-                  <strong>Where framing diverges:</strong> {activeStory.d}
+                  <strong>Where framing diverges:</strong> {radarStory.d}
                 </p>
                 <p>
-                  <strong>Practice UPSC Question:</strong> Critically examine how contrasting media framing of &ldquo;{activeStory.t}&rdquo; shapes citizen perception and federal governance discourse. (150 words)
+                  <strong>Critical Framing Question:</strong> Critically examine how contrasting Left, Centre, and Right media framing of &ldquo;{radarStory.t}&rdquo; shapes citizen perception and democratic policy discourse.
                 </p>
               </div>
             )}
@@ -1124,8 +1393,8 @@ export default function HomePage() {
       <section className="learn" id="learn">
         <h2 className="d">Media Literacy Lab</h2>
         <p className="lp">
-          Four short interactive lessons, followed by a dynamic framing quiz. Designed for civil service aspirants,
-          journalists, and citizens who want to read Indian news with clear eyes.
+          Four short interactive lessons, followed by a dynamic framing quiz. Designed for citizens,
+          journalists, and researchers who want to read Indian news with clear eyes across Left, Centre, and Right.
         </p>
 
         <div className="lgrid">
@@ -1167,7 +1436,7 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* Interactive Quiz */}
+          {/* Quiz */}
           <div className="paper">
             <h3 className="d">Spot The Bias</h3>
             {quizState.items.length === 0 ? (
@@ -1206,9 +1475,9 @@ export default function HomePage() {
 
                 <div className="qo">
                   {[
-                    { key: "k", label: "Critical" },
-                    { key: "n", label: "Neutral" },
-                    { key: "s", label: "Supportive" },
+                    { key: "k", label: "Left (Critical)" },
+                    { key: "n", label: "Centre (Neutral)" },
+                    { key: "s", label: "Right (Supportive)" },
                   ].map(({ key, label }) => (
                     <button
                       key={key}
@@ -1243,10 +1512,10 @@ export default function HomePage() {
                       The headline leans{" "}
                       <strong>
                         {quizState.items[quizState.index].lean === "k"
-                          ? "Critical"
+                          ? "Left (Critical of govt)"
                           : quizState.items[quizState.index].lean === "s"
-                          ? "Supportive"
-                          : "Neutral"}
+                          ? "Right (Supportive of govt)"
+                          : "Centre (Neutral)"}
                       </strong>
                       . Loaded phrasing has been highlighted.
                     </p>
@@ -1274,16 +1543,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Broadside Footer */}
+      {/* Footer */}
       <footer>
         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "16px", marginBottom: "16px" }}>
           <div>
             <strong>Dwi Drishti News (द्वि दृष्टि न्यूज़)</strong> — Built by Team Optimus.
             <br />
-            Section 52(1)(a) Indian Copyright Act, 1957 Fair Dealing compliant for non-commercial research and review.
+            Section 52(1)(a) Indian Copyright Act, 1957 Fair Dealing compliant for non-commercial media literacy research.
           </div>
           <div>
-            <a href="/prep" className="pill" style={{ marginRight: "8px" }}>Perspective Prep</a>
             <a href="/methodology" className="pill" style={{ marginRight: "8px" }}>Methodology</a>
             <a href="/takedown" className="pill">Legal & Takedown</a>
           </div>
