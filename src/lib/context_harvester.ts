@@ -845,7 +845,7 @@ const CURATED_CURRENT_REPORTS: NewsCluster[] = [
         source: "curated",
       },
     ],
-  },,
+  },
   {
     id: "clu-21",
     tag: "Judiciary",
