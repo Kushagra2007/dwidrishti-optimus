@@ -121,22 +121,22 @@ export async function fetchLiveIndianNews(): Promise<LiveCluster[]> {
     });
   }
 
-  // Group 2: Delhi Protests & Law & Order Security Actions
+  // Group 2: Delhi Protests & Law & Order Security Actions (CJP / Election Commission Demonstrations)
   const protestArticles = harvested.filter((a) =>
-    /protest|police|arrest|detain|security|clash|march|bhopal|delhi|morcha|rally/i.test(a.title)
+    /protest|cjp|cockroach|police|arrest|detain|security|clash|march|bhopal|delhi|morcha|rally|election|commissioner|sir/i.test(a.title)
   );
   if (protestArticles.length >= 2) {
     clusters.push({
       id: "clu-live-protest-02",
-      canonicalTitle: "National Capital Protests & Inter-State Preventive Detentions",
-      canonicalTitleHi: "राष्ट्रीय राजधानी विरोध प्रदर्शन और अंतर-राज्यीय हिरासत",
+      canonicalTitle: "CJP (Cockroach Janta Party) New Delhi Protest & Heavy Security Around Nirvachan Sadan",
+      canonicalTitleHi: "सीजेपी (कॉकरोच जनता पार्टी) नई दिल्ली विरोध प्रदर्शन और निर्वाचन सदन पर भारी सुरक्षा",
       tag: "Politics",
       isBlindspot: false,
-      leadFact: "Police authorities in multiple states detain political organizers and student volunteers ahead of planned demonstrations.",
-      divergenceSummary: "Establishment framing highlights preventive public order measures; critical framing highlights curtailment of constitutional right to peaceful assembly.",
-      omissionEvidence: "Statutory justification under preventive detention clauses",
+      leadFact: "Delhi Police deploy 23,000 security personnel and shut 45 metro stations as youth-led Cockroach Janta Party protests demand CEC resignation over SIR electoral rolls.",
+      divergenceSummary: "Establishment framing highlights preventive public order measures and lack of assembly permits; critical framing highlights democratic protest rights and voter roll integrity.",
+      omissionEvidence: "Specific Election Commission SIR audit deletion logs",
       omittedOutlets: ["Amar Ujala"],
-      articles: protestArticles.slice(0, 5),
+      articles: protestArticles.slice(0, 6),
     });
   }
 

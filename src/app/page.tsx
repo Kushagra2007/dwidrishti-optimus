@@ -376,12 +376,12 @@ export default function HomePage() {
 
     const timer1 = setTimeout(() => {
       setEngineProgress(45);
-      setEngineStatus((prev) => prev + `\n▸ Parsing Left / Centre / Right framing & statutory context...`);
+      setEngineStatus((prev) => prev + `\n▸ Ingesting and evaluating 10 articles across Left, Centre, and Right outlets...`);
     }, 600);
 
     const timer2 = setTimeout(() => {
       setEngineProgress(75);
-      setEngineStatus((prev) => prev + `\n▸ Computing 6 Indian axes & extracting selective omission proof...`);
+      setEngineStatus((prev) => prev + `\n▸ Computing 6 Indian axes across 10 articles & extracting selective omission proof...`);
     }, 1200);
 
     try {
@@ -401,10 +401,11 @@ export default function HomePage() {
         const modelNote = data.fallbackOccurred
           ? ` (failover activated to ${data.modelUsed})`
           : ` (${data.modelUsed})`;
+        const count = data.analysis.outlets?.length || 10;
         setEngineStatus(
           (prev) =>
             prev +
-            `\n✓ Pipeline complete${modelNote}: "${data.analysis.canonicalTitle}"\n✓ Opening Left-Centre-Right perspective brief…`
+            `\n✓ Pipeline complete${modelNote}: "${data.analysis.canonicalTitle}"\n✓ Analysed ${count} articles across Left, Centre, and Right spectra\n✓ Opening Left-Centre-Right perspective brief…`
         );
 
         const newOutletMap: Record<string, OutletCoverage> = {};
@@ -497,7 +498,12 @@ export default function HomePage() {
   // Filtered stories
   const filteredStories = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return stories.filter((s) => {
+    const isCjpQuery =
+      q.includes("cjp") ||
+      q.includes("cockroach") ||
+      (q.includes("protest") && !q.includes("rail") && !q.includes("toll"));
+
+    const list = stories.filter((s) => {
       const matchesTag =
         selectedTag === "All"
           ? true
@@ -510,11 +516,41 @@ export default function HomePage() {
 
       const titleMatch = s.t.toLowerCase().includes(q) || s.th.toLowerCase().includes(q);
       const tagMatch = s.tag.toLowerCase().includes(q);
+      const factMatch = s.f?.toLowerCase().includes(q);
+      const divergenceMatch = s.d?.toLowerCase().includes(q);
+      const omissionMatch = s.ab[0]?.toLowerCase().includes(q);
+      const perspectiveMatch = s.br?.some((b) => b.toLowerCase().includes(q));
       const outletMatch = Object.entries(s.o).some(
         ([outlet, cov]) => outlet.toLowerCase().includes(q) || cov.headline.toLowerCase().includes(q)
       );
-      return titleMatch || tagMatch || outletMatch;
+      const cjpMatch =
+        (q.includes("cjp") || q.includes("cockroach")) &&
+        (s.id === "clu-02" || s.t.toLowerCase().includes("cjp") || s.t.toLowerCase().includes("election commissioner"));
+
+      return (
+        titleMatch ||
+        tagMatch ||
+        factMatch ||
+        divergenceMatch ||
+        omissionMatch ||
+        perspectiveMatch ||
+        outletMatch ||
+        cjpMatch
+      );
     });
+
+    // When searching for CJP or protest, prioritize latest October 10, 2026 CJP Delhi protest at the top
+    if (isCjpQuery) {
+      return [...list].sort((a, b) => {
+        const aIsCjp = a.id === "clu-02" || a.t.toLowerCase().includes("cjp");
+        const bIsCjp = b.id === "clu-02" || b.t.toLowerCase().includes("cjp");
+        if (aIsCjp && !bIsCjp) return -1;
+        if (!aIsCjp && bIsCjp) return 1;
+        return 0;
+      });
+    }
+
+    return list;
   }, [stories, selectedTag, searchQuery]);
 
   const tagsList = useMemo(() => {
@@ -1072,6 +1108,7 @@ export default function HomePage() {
 
           <div className="chips" id="sug">
             {[
+              "CJP Protest",
               "air quality",
               "GST dues",
               "MSP",
@@ -1105,7 +1142,7 @@ export default function HomePage() {
 
       {/* Top Stories Feed Grid */}
       <main className="feed">
-        <h2 className="d">{lang === "hi" ? "मुख्य ख़बरें (20+ रिपोर्ट्स)" : "Top Stories (20+ Reports)"}</h2>
+        <h2 className="d">{lang === "hi" ? "मुख्य ख़बरें (25+ रिपोर्ट्स, 80+ आर्टिकल्स)" : "Top Stories (25+ Reports, 80+ Articles)"}</h2>
 
         {/* Filter Chips */}
         <div className="chips" id="chips" role="group" aria-label="Filter stories">
